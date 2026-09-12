@@ -9,7 +9,7 @@ router.get('/', async (req, res) => {
     const { active_only } = req.query;
     let sql = `SELECT * FROM categories WHERE 1=1`;
     if (active_only !== 'false') {
-      sql += ` AND is_active = 1`;
+      sql += ` AND is_active = true`;
     }
     sql += ` ORDER BY display_order ASC, name ASC`;
 
@@ -38,7 +38,7 @@ router.post('/', authenticateAdmin, async (req, res) => {
 
     const result = await runQuery(
       `INSERT INTO categories (name, slug, image_url, display_order, is_active) VALUES (?, ?, ?, ?, ?)`,
-      [name, slug, image_url || '', display_order || 0, is_active !== undefined ? (is_active ? 1 : 0) : 1]
+      [name, slug, image_url || '', display_order || 0, is_active !== undefined ? Boolean(is_active) : true]
     );
 
     res.status(201).json({
@@ -75,7 +75,7 @@ router.put('/:id', authenticateAdmin, async (req, res) => {
         slug,
         image_url !== undefined ? image_url : existing.image_url,
         display_order !== undefined ? display_order : existing.display_order,
-        is_active !== undefined ? (is_active ? 1 : 0) : existing.is_active,
+        is_active !== undefined ? Boolean(is_active) : Boolean(existing.is_active),
         categoryId
       ]
     );

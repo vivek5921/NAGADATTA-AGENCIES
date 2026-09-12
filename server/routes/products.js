@@ -13,7 +13,7 @@ router.get('/', async (req, res) => {
 
     // By default, customer view shows active products only
     if (active_only !== 'false') {
-      sql += ` AND is_active = 1`;
+      sql += ` AND is_active = true`;
     }
 
     if (category && category !== 'all') {
@@ -27,7 +27,7 @@ router.get('/', async (req, res) => {
     }
 
     if (most_selling === 'true' || most_selling === '1') {
-      sql += ` AND is_most_selling = 1`;
+      sql += ` AND is_most_selling = true`;
     }
 
     if (search) {
@@ -72,13 +72,13 @@ router.get('/:id', async (req, res) => {
 
     // Fetch related products in same category
     const relatedProducts = await getAll(
-      `SELECT id, name, brand, category_name, availability, main_image, price_text FROM products WHERE category_name = ? AND id != ? AND is_active = 1 LIMIT 4`,
+      `SELECT id, name, brand, category_name, availability, main_image, price_text FROM products WHERE category_name = ? AND id != ? AND is_active = true LIMIT 4`,
       [product.category_name, product.id]
     );
 
     // Fetch matching spare parts based on category / keyword
     const spareParts = await getAll(
-      `SELECT * FROM spare_parts WHERE (category LIKE ? OR compatible_with LIKE ? OR name LIKE ?) AND is_active = 1 LIMIT 4`,
+      `SELECT * FROM spare_parts WHERE (category LIKE ? OR compatible_with LIKE ? OR name LIKE ?) AND is_active = true LIMIT 4`,
       [`%${product.category_name}%`, `%${product.brand}%`, `%${product.name}%`]
     );
 
@@ -136,8 +136,8 @@ router.post('/', authenticateAdmin, async (req, res) => {
         model_number || '',
         availability || 'available',
         price_text || 'Contact shop for price/details',
-        is_most_selling ? 1 : 0,
-        is_active !== undefined ? (is_active ? 1 : 0) : 1,
+        is_most_selling ? true : false,
+        is_active !== undefined ? Boolean(is_active) : true,
         main_image || '',
         imagesStr
       ]
@@ -213,8 +213,8 @@ router.put('/:id', authenticateAdmin, async (req, res) => {
         model_number !== undefined ? model_number : existing.model_number,
         availability !== undefined ? availability : existing.availability,
         price_text !== undefined ? price_text : existing.price_text,
-        is_most_selling !== undefined ? (is_most_selling ? 1 : 0) : existing.is_most_selling,
-        is_active !== undefined ? (is_active ? 1 : 0) : existing.is_active,
+        is_most_selling !== undefined ? Boolean(is_most_selling) : Boolean(existing.is_most_selling),
+        is_active !== undefined ? Boolean(is_active) : Boolean(existing.is_active),
         main_image !== undefined ? main_image : existing.main_image,
         imagesStr,
         productId

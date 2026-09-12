@@ -192,8 +192,8 @@ async function seedDatabase() {
   if (existingCategories.length === 0) {
     for (const c of categoriesList) {
       await runQuery(
-        `INSERT INTO categories (name, slug, image_url, is_active, display_order) VALUES (?, ?, ?, 1, ?)`,
-        [c.name, c.slug, c.image, c.order]
+        `INSERT INTO categories (name, slug, image_url, is_active, display_order) VALUES (?, ?, ?, ?, ?)`,
+        [c.name, c.slug, c.image, true, c.order]
       );
     }
     console.log('[SEED] Initial categories seeded');
@@ -381,8 +381,8 @@ async function seedDatabase() {
     for (const p of productsData) {
       await runQuery(
         `INSERT INTO products (name, brand, category_id, category_name, description, features, specifications, model_number, availability, price_text, is_most_selling, is_active, main_image, additional_images)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
-        [p.name, p.brand, p.category_id, p.category_name, p.description, p.features, p.specifications, p.model_number, p.availability, "Contact shop for price/details", p.is_most_selling, p.main_image, p.additional_images]
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [p.name, p.brand, p.category_id, p.category_name, p.description, p.features, p.specifications, p.model_number, p.availability, "Contact shop for price/details", p.is_most_selling === 1, true, p.main_image, p.additional_images]
       );
     }
     console.log('[SEED] Initial products seeded');
@@ -478,8 +478,8 @@ async function seedDatabase() {
     for (const sp of sparePartsData) {
       await runQuery(
         `INSERT INTO spare_parts (name, category, compatible_with, model_number, availability, description, image_url, is_active)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 1)`,
-        [sp.name, sp.category, sp.compatible_with, sp.model_number, sp.availability, sp.description, sp.image_url]
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [sp.name, sp.category, sp.compatible_with, sp.model_number, sp.availability, sp.description, sp.image_url, true]
       );
     }
     console.log('[SEED] Initial spare parts seeded');

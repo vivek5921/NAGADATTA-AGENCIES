@@ -11,7 +11,7 @@ router.get('/', async (req, res) => {
     const params = [];
 
     if (active_only !== 'false') {
-      sql += ` AND is_active = 1`;
+      sql += ` AND is_active = true`;
     }
 
     if (category && category !== 'all') {
@@ -59,7 +59,7 @@ router.post('/', authenticateAdmin, async (req, res) => {
         model_number || '',
         availability || 'available',
         description || '',
-        is_active !== undefined ? (is_active ? 1 : 0) : 1
+        is_active !== undefined ? Boolean(is_active) : true
       ]
     );
 
@@ -104,7 +104,7 @@ router.put('/:id', authenticateAdmin, async (req, res) => {
         model_number !== undefined ? model_number : existing.model_number,
         availability !== undefined ? availability : existing.availability,
         description !== undefined ? description : existing.description,
-        is_active !== undefined ? (is_active ? 1 : 0) : existing.is_active,
+        is_active !== undefined ? Boolean(is_active) : Boolean(existing.is_active),
         id
       ]
     );
