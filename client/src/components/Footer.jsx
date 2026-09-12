@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useShop } from '../context/ShopContext';
-import { Phone, MapPin, Instagram, MessageCircle, Clock, ExternalLink, Lock } from 'lucide-react';
+import { Phone, MapPin, Instagram, MessageCircle, Clock, ExternalLink, Lock, Shield } from 'lucide-react';
 
 export default function Footer() {
   const { settings } = useShop();
@@ -87,6 +87,12 @@ export default function Footer() {
               </li>
               <li>
                 <Link to="/contact" className="hover:text-brand-400 transition-colors">Contact</Link>
+              </li>
+              <li className="pt-1">
+                <Link to="/admin/login" className="text-amber-400 hover:text-amber-300 transition-colors font-bold flex items-center gap-1.5">
+                  <Shield className="w-3.5 h-3.5" />
+                  <span>Admin / Owner Login</span>
+                </Link>
               </li>
             </ul>
           </div>
