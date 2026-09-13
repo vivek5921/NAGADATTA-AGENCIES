@@ -39,8 +39,12 @@ export const ShopProvider = ({ children }) => {
   // Admin Auth State
   const [adminToken, setAdminToken] = useState(() => localStorage.getItem('nagadatta_admin_token') || null);
   const [adminUser, setAdminUser] = useState(() => {
-    const saved = localStorage.getItem('nagadatta_admin_user');
-    return saved ? JSON.parse(saved) : null;
+    try {
+      const saved = localStorage.getItem('nagadatta_admin_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch (err) {
+      return null;
+    }
   });
 
   const fetchSettings = async () => {
