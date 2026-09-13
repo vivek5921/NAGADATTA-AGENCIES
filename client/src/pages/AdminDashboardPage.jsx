@@ -5,7 +5,8 @@ import api from '../services/api';
 import {
   Package, Wrench, Grid, Settings, Plus, Edit, Trash2, CheckCircle2,
   AlertTriangle, Flame, Shield, LogOut, Upload, Save, X, Eye, Phone,
-  MapPin, Instagram, RefreshCw, LayoutDashboard, Check, Image as ImageIcon
+  MapPin, Instagram, RefreshCw, LayoutDashboard, Check, Image as ImageIcon,
+  Lock
 } from 'lucide-react';
 
 export default function AdminDashboardPage() {

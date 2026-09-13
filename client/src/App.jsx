@@ -11,6 +11,7 @@ import AboutPage from './pages/AboutPage';
 import ContactPage from './pages/ContactPage';
 import AdminLoginPage from './pages/AdminLoginPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
+import ErrorBoundary from './components/ErrorBoundary';
 
 function AppLayout() {
   const location = useLocation();
@@ -51,10 +52,12 @@ function AppLayout() {
 
 export default function App() {
   return (
-    <ShopProvider>
-      <Router>
-        <AppLayout />
-      </Router>
-    </ShopProvider>
+    <ErrorBoundary>
+      <ShopProvider>
+        <Router>
+          <AppLayout />
+        </Router>
+      </ShopProvider>
+    </ErrorBoundary>
   );
 }
