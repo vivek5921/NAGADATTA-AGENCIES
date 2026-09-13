@@ -6,7 +6,7 @@ const { authenticateAdmin } = require('../middleware/auth');
 // GET /api/products - Public product catalogue listing
 router.get('/', async (req, res) => {
   try {
-    const { category, search, availability, most_selling, active_only } = req.query;
+    const { category, search, availability, status, most_selling, active_only } = req.query;
 
     let sql = `SELECT * FROM products WHERE 1=1`;
     const params = [];
@@ -21,9 +21,10 @@ router.get('/', async (req, res) => {
       params.push(category, category);
     }
 
-    if (availability && availability !== 'all') {
+    const availFilter = status || availability;
+    if (availFilter && availFilter !== 'all') {
       sql += ` AND availability = ?`;
-      params.push(availability);
+      params.push(availFilter);
     }
 
     if (most_selling === 'true' || most_selling === '1') {
@@ -40,18 +41,32 @@ router.get('/', async (req, res) => {
 
     const products = await getAll(sql, params);
 
-    // Parse JSON features & specifications safely
-    const formatted = products.map(p => ({
-      ...p,
-      features: p.features ? JSON.parse(p.features) : [],
-      specifications: p.specifications ? JSON.parse(p.specifications) : {},
-      additional_images: p.additional_images ? JSON.parse(p.additional_images) : []
-    }));
+    // Format fields safely
+    const formatted = products.map(p => {
+      let feats = [];
+      let specs = {};
+      let addImages = [];
+      try { feats = p.features ? (typeof p.features === 'string' ? JSON.parse(p.features) : p.features) : []; } catch (e) {}
+      try { specs = p.specifications ? (typeof p.specifications === 'string' ? JSON.parse(p.specifications) : p.specifications) : {}; } catch (e) {}
+      try { addImages = p.additional_images ? (typeof p.additional_images === 'string' ? JSON.parse(p.additional_images) : p.additional_images) : []; } catch (e) {}
+
+      const avail = p.availability || p.status || 'available';
+      return {
+        ...p,
+        status: avail,
+        availability: avail,
+        is_most_selling: p.is_most_selling === true || p.is_most_selling === 1 ? 1 : 0,
+        is_active: p.is_active === true || p.is_active === 1 ? 1 : 0,
+        features: Array.isArray(feats) ? feats : [],
+        specifications: specs && typeof specs === 'object' ? specs : {},
+        additional_images: Array.isArray(addImages) ? addImages : []
+      };
+    });
 
     res.json({ success: true, count: formatted.length, products: formatted });
   } catch (err) {
     console.error('Error fetching products:', err);
-    res.status(500).json({ success: false, message: 'Failed to fetch products.' });
+    res.status(500).json({ success: false, message: 'Showroom catalogue is temporarily unavailable. Please try again.' });
   }
 });
 
@@ -63,11 +78,24 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Product not found.' });
     }
 
+    let feats = [];
+    let specs = {};
+    let addImages = [];
+    try { feats = product.features ? JSON.parse(product.features) : []; } catch (e) {}
+    try { specs = product.specifications ? JSON.parse(product.specifications) : {}; } catch (e) {}
+    try { addImages = product.additional_images ? JSON.parse(product.additional_images) : []; } catch (e) {}
+
+    const avail = product.availability || product.status || 'available';
+
     const formatted = {
       ...product,
-      features: product.features ? JSON.parse(product.features) : [],
-      specifications: product.specifications ? JSON.parse(product.specifications) : {},
-      additional_images: product.additional_images ? JSON.parse(product.additional_images) : []
+      status: avail,
+      availability: avail,
+      is_most_selling: product.is_most_selling === true || product.is_most_selling === 1 ? 1 : 0,
+      is_active: product.is_active === true || product.is_active === 1 ? 1 : 0,
+      features: Array.isArray(feats) ? feats : [],
+      specifications: specs && typeof specs === 'object' ? specs : {},
+      additional_images: Array.isArray(addImages) ? addImages : []
     };
 
     // Fetch related products in same category
@@ -89,8 +117,8 @@ router.get('/:id', async (req, res) => {
       relatedSpareParts: spareParts
     });
   } catch (err) {
-    console.error('Error fetching product:', err);
-    res.status(500).json({ success: false, message: 'Server error.' });
+    console.error('Error fetching product details:', err);
+    res.status(500).json({ success: false, message: 'Unable to load product details.' });
   }
 });
 
@@ -107,10 +135,12 @@ router.post('/', authenticateAdmin, async (req, res) => {
       specifications,
       model_number,
       availability,
+      status,
       price_text,
       is_most_selling,
       is_active,
       main_image,
+      main_image_public_id,
       additional_images
     } = req.body;
 
@@ -121,10 +151,11 @@ router.post('/', authenticateAdmin, async (req, res) => {
     const featuresStr = Array.isArray(features) ? JSON.stringify(features) : (features || '[]');
     const specsStr = typeof specifications === 'object' ? JSON.stringify(specifications) : (specifications || '{}');
     const imagesStr = Array.isArray(additional_images) ? JSON.stringify(additional_images) : '[]';
+    const avail = status || availability || 'available';
 
     const result = await runQuery(
-      `INSERT INTO products (name, brand, category_id, category_name, description, features, specifications, model_number, availability, price_text, is_most_selling, is_active, main_image, additional_images)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO products (name, brand, category_id, category_name, description, features, specifications, model_number, availability, price_text, is_most_selling, is_active, main_image, main_image_public_id, additional_images)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         name,
         brand,
@@ -134,11 +165,12 @@ router.post('/', authenticateAdmin, async (req, res) => {
         featuresStr,
         specsStr,
         model_number || '',
-        availability || 'available',
+        avail,
         price_text || 'Contact shop for price/details',
         is_most_selling ? true : false,
         is_active !== undefined ? Boolean(is_active) : true,
         main_image || '',
+        main_image_public_id || '',
         imagesStr
       ]
     );
@@ -173,16 +205,19 @@ router.put('/:id', authenticateAdmin, async (req, res) => {
       specifications,
       model_number,
       availability,
+      status,
       price_text,
       is_most_selling,
       is_active,
       main_image,
+      main_image_public_id,
       additional_images
     } = req.body;
 
     const featuresStr = Array.isArray(features) ? JSON.stringify(features) : (features !== undefined ? features : existing.features);
     const specsStr = typeof specifications === 'object' ? JSON.stringify(specifications) : (specifications !== undefined ? specifications : existing.specifications);
     const imagesStr = Array.isArray(additional_images) ? JSON.stringify(additional_images) : (additional_images !== undefined ? additional_images : existing.additional_images);
+    const avail = status !== undefined ? status : (availability !== undefined ? availability : existing.availability);
 
     await runQuery(
       `UPDATE products SET
@@ -199,6 +234,7 @@ router.put('/:id', authenticateAdmin, async (req, res) => {
         is_most_selling = ?,
         is_active = ?,
         main_image = ?,
+        main_image_public_id = ?,
         additional_images = ?,
         updated_at = CURRENT_TIMESTAMP
        WHERE id = ?`,
@@ -211,11 +247,12 @@ router.put('/:id', authenticateAdmin, async (req, res) => {
         featuresStr,
         specsStr,
         model_number !== undefined ? model_number : existing.model_number,
-        availability !== undefined ? availability : existing.availability,
+        avail,
         price_text !== undefined ? price_text : existing.price_text,
         is_most_selling !== undefined ? Boolean(is_most_selling) : Boolean(existing.is_most_selling),
         is_active !== undefined ? Boolean(is_active) : Boolean(existing.is_active),
         main_image !== undefined ? main_image : existing.main_image,
+        main_image_public_id !== undefined ? main_image_public_id : existing.main_image_public_id,
         imagesStr,
         productId
       ]

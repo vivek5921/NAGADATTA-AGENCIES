@@ -125,16 +125,6 @@ export default function Navbar() {
               <Phone className="w-3.5 h-3.5" />
               <span>Call Shop</span>
             </a>
-
-            {/* Admin Portal Button */}
-            <Link
-              to="/admin/login"
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 hover:text-brand-600 bg-slate-100 hover:bg-brand-50 border border-slate-200 px-3 py-2 rounded-xl transition-colors"
-              title="Admin Portal"
-            >
-              <Shield className="w-3.5 h-3.5 text-brand-600" />
-              <span>Admin</span>
-            </Link>
           </div>
 
           {/* Mobile Search & Hamburger */}
@@ -196,15 +186,6 @@ export default function Navbar() {
               <Phone className="w-4 h-4" />
               <span>Call Shop ({settings.phone_number})</span>
             </a>
-
-            <Link
-              to="/admin/login"
-              onClick={() => setMobileMenuOpen(false)}
-              className="w-full flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold py-2.5 rounded-xl text-xs text-center border border-slate-200 transition-colors"
-            >
-              <Shield className="w-4 h-4 text-brand-600" />
-              <span>Owner / Admin Portal</span>
-            </Link>
           </div>
         </div>
       )}

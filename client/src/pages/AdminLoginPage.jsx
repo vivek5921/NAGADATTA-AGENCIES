@@ -6,7 +6,7 @@ import { Shield, Lock, User, AlertCircle, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function AdminLoginPage() {
-  const [username, setUsername] = useState('admin');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -25,10 +25,10 @@ export default function AdminLoginPage() {
         loginAdmin(res.data.token, res.data.user);
         navigate('/admin');
       } else {
-        setError(res.data.message || 'Login failed.');
+        setError(res.data.message || 'Invalid login credentials.');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Invalid username or password.');
+      setError(err.response?.data?.message || 'Invalid login credentials.');
     } finally {
       setLoading(false);
     }
@@ -65,6 +65,7 @@ export default function AdminLoginPage() {
               <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
               <input
                 type="text"
+                placeholder="Enter admin username..."
                 value={username}
                 onChange={e => setUsername(e.target.value)}
                 required
@@ -81,7 +82,7 @@ export default function AdminLoginPage() {
               <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
               <input
                 type="password"
-                placeholder="Enter password..."
+                placeholder="Enter admin password..."
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 required
@@ -105,7 +106,6 @@ export default function AdminLoginPage() {
             <ArrowLeft className="w-4 h-4" />
             <span>Return to Store</span>
           </Link>
-          <span className="text-[11px]">Default: admin / admin123</span>
         </div>
 
       </div>

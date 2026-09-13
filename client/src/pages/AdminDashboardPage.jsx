@@ -46,8 +46,16 @@ export default function AdminDashboardPage() {
     price_text: 'Contact shop for price/details',
     is_most_selling: false,
     is_active: true,
-    main_image: ''
+    main_image: '',
+    additional_images: []
   });
+
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [passwordLoading, setPasswordLoading] = useState(false);
 
   const [spareForm, setSpareForm] = useState({
     name: '',
@@ -120,7 +128,7 @@ export default function AdminDashboardPage() {
       }
     } catch (err) {
       console.error('Upload failed:', err);
-      showNotify('Failed to upload image.', 'error');
+      showNotify(err.response?.data?.message || 'Failed to upload image.', 'error');
     }
   };
 
@@ -138,9 +146,10 @@ export default function AdminDashboardPage() {
         model_number: prod.model_number || '',
         availability: prod.availability || 'available',
         price_text: prod.price_text || 'Contact shop for price/details',
-        is_most_selling: prod.is_most_selling === 1,
+        is_most_selling: prod.is_most_selling === 1 || prod.is_most_selling === true,
         is_active: prod.is_active === 1 || prod.is_active === true,
-        main_image: prod.main_image || ''
+        main_image: prod.main_image || '',
+        additional_images: Array.isArray(prod.additional_images) ? prod.additional_images : []
       });
     } else {
       setEditingProduct(null);
@@ -156,7 +165,8 @@ export default function AdminDashboardPage() {
         price_text: 'Contact shop for price/details',
         is_most_selling: false,
         is_active: true,
-        main_image: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=800&q=80'
+        main_image: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=800&q=80',
+        additional_images: []
       });
     }
     setProductModalOpen(true);
@@ -188,7 +198,8 @@ export default function AdminDashboardPage() {
         price_text: productForm.price_text,
         is_most_selling: productForm.is_most_selling,
         is_active: productForm.is_active,
-        main_image: productForm.main_image
+        main_image: productForm.main_image,
+        additional_images: productForm.additional_images
       };
 
       if (editingProduct) {
@@ -202,6 +213,32 @@ export default function AdminDashboardPage() {
       refreshAllData();
     } catch (err) {
       showNotify('Failed to save product.', 'error');
+    }
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    if (!passwordForm.currentPassword || !passwordForm.newPassword) {
+      showNotify('All password fields are required.', 'error');
+      return;
+    }
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      showNotify('New password and confirm password do not match.', 'error');
+      return;
+    }
+    try {
+      setPasswordLoading(true);
+      const res = await api.post('/admin/change-password', passwordForm);
+      if (res.data.success) {
+        showNotify('Admin password updated successfully!');
+        setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      } else {
+        showNotify(res.data.message || 'Failed to update password.', 'error');
+      }
+    } catch (err) {
+      showNotify(err.response?.data?.message || 'Failed to update password.', 'error');
+    } finally {
+      setPasswordLoading(false);
     }
   };
 
@@ -814,182 +851,237 @@ export default function AdminDashboardPage() {
 
         {/* TAB 5: SHOP SETTINGS (Requirement 25) */}
         {activeTab === 'settings' && (
-          <form onSubmit={handleSaveSettings} className="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-200 space-y-6">
-            <div className="border-b border-slate-100 pb-3">
-              <h2 className="text-lg font-bold text-slate-900">
-                Shop Information & Branding Settings
-              </h2>
-              <p className="text-xs text-slate-500">
-                All changes save directly to the database and update the customer storefront immediately.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div>
-                <label className="block text-xs font-bold uppercase text-slate-700 mb-1">Shop Name</label>
-                <input
-                  type="text"
-                  value={settingsForm.shop_name || ''}
-                  onChange={e => setSettingsForm({ ...settingsForm, shop_name: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold"
-                />
+          <div className="space-y-6">
+            <form onSubmit={handleSaveSettings} className="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-200 space-y-6">
+              <div className="border-b border-slate-100 pb-3">
+                <h2 className="text-lg font-bold text-slate-900">
+                  Shop Information & Branding Settings
+                </h2>
+                <p className="text-xs text-slate-500">
+                  All changes save directly to the database and update the customer storefront immediately.
+                </p>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold uppercase text-slate-700 mb-1">Tagline</label>
-                <input
-                  type="text"
-                  value={settingsForm.tagline || ''}
-                  onChange={e => setSettingsForm({ ...settingsForm, tagline: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase text-slate-700 mb-1">Phone Number (Calling)</label>
-                <input
-                  type="text"
-                  value={settingsForm.phone_number || ''}
-                  onChange={e => setSettingsForm({ ...settingsForm, phone_number: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase text-slate-700 mb-1">WhatsApp Number (e.g. 919849012345)</label>
-                <input
-                  type="text"
-                  value={settingsForm.whatsapp_number || ''}
-                  onChange={e => setSettingsForm({ ...settingsForm, whatsapp_number: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase text-slate-700 mb-1">Email Address</label>
-                <input
-                  type="email"
-                  value={settingsForm.email || ''}
-                  onChange={e => setSettingsForm({ ...settingsForm, email: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase text-slate-700 mb-1">Google Maps URL (Official Location)</label>
-                <input
-                  type="text"
-                  value={settingsForm.google_maps_url || ''}
-                  onChange={e => setSettingsForm({ ...settingsForm, google_maps_url: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase text-slate-700 mb-1">Instagram Profile URL</label>
-                <input
-                  type="text"
-                  value={settingsForm.instagram_url || ''}
-                  onChange={e => setSettingsForm({ ...settingsForm, instagram_url: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase text-slate-700 mb-1">Opening Hours</label>
-                <input
-                  type="text"
-                  value={settingsForm.opening_hours || ''}
-                  onChange={e => setSettingsForm({ ...settingsForm, opening_hours: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold"
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="block text-xs font-bold uppercase text-slate-700 mb-1">Showroom Address</label>
-                <input
-                  type="text"
-                  value={settingsForm.address || ''}
-                  onChange={e => setSettingsForm({ ...settingsForm, address: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold"
-                />
-              </div>
-
-              {/* Hero Image Control */}
-              <div className="md:col-span-2 space-y-2 border-t pt-4">
-                <label className="block text-xs font-bold uppercase text-slate-700">Hero Section Showcase Image</label>
-                <div className="flex flex-col sm:flex-row gap-3 items-center">
-                  {settingsForm.hero_image && (
-                    <img src={settingsForm.hero_image} alt="" className="w-24 h-16 object-cover rounded-lg border bg-slate-100 shrink-0" />
-                  )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-700 mb-1">Shop Name</label>
                   <input
                     type="text"
-                    placeholder="Enter image URL..."
-                    value={settingsForm.hero_image || ''}
-                    onChange={e => setSettingsForm({ ...settingsForm, hero_image: e.target.value })}
+                    value={settingsForm.shop_name || ''}
+                    onChange={e => setSettingsForm({ ...settingsForm, shop_name: e.target.value })}
                     className="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold"
                   />
-                  <label className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-xl cursor-pointer flex items-center gap-1.5 shrink-0 transition-colors">
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>Upload Image</span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-700 mb-1">Tagline</label>
+                  <input
+                    type="text"
+                    value={settingsForm.tagline || ''}
+                    onChange={e => setSettingsForm({ ...settingsForm, tagline: e.target.value })}
+                    className="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-700 mb-1">Phone Number (Calling)</label>
+                  <input
+                    type="text"
+                    value={settingsForm.phone_number || ''}
+                    onChange={e => setSettingsForm({ ...settingsForm, phone_number: e.target.value })}
+                    className="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-700 mb-1">WhatsApp Number (e.g. 919849012345)</label>
+                  <input
+                    type="text"
+                    value={settingsForm.whatsapp_number || ''}
+                    onChange={e => setSettingsForm({ ...settingsForm, whatsapp_number: e.target.value })}
+                    className="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-700 mb-1">Email Address</label>
+                  <input
+                    type="email"
+                    value={settingsForm.email || ''}
+                    onChange={e => setSettingsForm({ ...settingsForm, email: e.target.value })}
+                    className="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-700 mb-1">Google Maps URL (Official Location)</label>
+                  <input
+                    type="text"
+                    value={settingsForm.google_maps_url || ''}
+                    onChange={e => setSettingsForm({ ...settingsForm, google_maps_url: e.target.value })}
+                    className="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-700 mb-1">Instagram Profile URL</label>
+                  <input
+                    type="text"
+                    value={settingsForm.instagram_url || ''}
+                    onChange={e => setSettingsForm({ ...settingsForm, instagram_url: e.target.value })}
+                    className="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-700 mb-1">Opening Hours</label>
+                  <input
+                    type="text"
+                    value={settingsForm.opening_hours || ''}
+                    onChange={e => setSettingsForm({ ...settingsForm, opening_hours: e.target.value })}
+                    className="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-bold uppercase text-slate-700 mb-1">Showroom Address</label>
+                  <input
+                    type="text"
+                    value={settingsForm.address || ''}
+                    onChange={e => setSettingsForm({ ...settingsForm, address: e.target.value })}
+                    className="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold"
+                  />
+                </div>
+
+                {/* Hero Image Control */}
+                <div className="md:col-span-2 space-y-2 border-t pt-4">
+                  <label className="block text-xs font-bold uppercase text-slate-700">Hero Section Showcase Image</label>
+                  <div className="flex flex-col sm:flex-row gap-3 items-center">
+                    {settingsForm.hero_image && (
+                      <img src={settingsForm.hero_image} alt="" className="w-24 h-16 object-cover rounded-lg border bg-slate-100 shrink-0" />
+                    )}
                     <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={e => handleFileUpload(e, url => setSettingsForm(prev => ({ ...prev, hero_image: url })))}
+                      type="text"
+                      placeholder="Enter image URL..."
+                      value={settingsForm.hero_image || ''}
+                      onChange={e => setSettingsForm({ ...settingsForm, hero_image: e.target.value })}
+                      className="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold"
                     />
-                  </label>
+                    <label className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-xl cursor-pointer flex items-center gap-1.5 shrink-0 transition-colors">
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>Upload Image</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={e => handleFileUpload(e, url => setSettingsForm(prev => ({ ...prev, hero_image: url })))}
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                {/* Logo URL Control */}
+                <div className="md:col-span-2 space-y-2 border-t pt-4">
+                  <label className="block text-xs font-bold uppercase text-slate-700">Logo Image URL</label>
+                  <div className="flex flex-col sm:flex-row gap-3 items-center">
+                    {settingsForm.logo_url && (
+                      <img src={settingsForm.logo_url} alt="" className="w-12 h-12 object-contain rounded-lg border bg-slate-100 shrink-0" />
+                    )}
+                    <input
+                      type="text"
+                      placeholder="Enter logo URL or leave blank for default..."
+                      value={settingsForm.logo_url || ''}
+                      onChange={e => setSettingsForm({ ...settingsForm, logo_url: e.target.value })}
+                      className="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold"
+                    />
+                    <label className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-xl cursor-pointer flex items-center gap-1.5 shrink-0 transition-colors">
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>Upload Logo</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={e => handleFileUpload(e, url => setSettingsForm(prev => ({ ...prev, logo_url: url })))}
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-bold uppercase text-slate-700 mb-1">About Us Description</label>
+                  <textarea
+                    rows={3}
+                    value={settingsForm.about_us || ''}
+                    onChange={e => setSettingsForm({ ...settingsForm, about_us: e.target.value })}
+                    className="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold"
+                  />
                 </div>
               </div>
 
-              {/* Logo URL Control */}
-              <div className="md:col-span-2 space-y-2 border-t pt-4">
-                <label className="block text-xs font-bold uppercase text-slate-700">Logo Image URL</label>
-                <div className="flex flex-col sm:flex-row gap-3 items-center">
-                  {settingsForm.logo_url && (
-                    <img src={settingsForm.logo_url} alt="" className="w-12 h-12 object-contain rounded-lg border bg-slate-100 shrink-0" />
-                  )}
+              <div className="pt-4 border-t border-slate-100 flex justify-end">
+                <button
+                  type="submit"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-3 rounded-xl shadow transition-all text-xs sm:text-sm flex items-center gap-2"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>Save All Settings</span>
+                </button>
+              </div>
+            </form>
+
+            {/* Dedicated Change Admin Password Card */}
+            <div className="bg-slate-900 text-white rounded-2xl p-6 border border-slate-800 shadow-lg">
+              <div className="flex items-center gap-2.5 mb-4">
+                <Shield className="w-5 h-5 text-amber-400" />
+                <h3 className="font-extrabold text-base text-white">Change Admin Password</h3>
+              </div>
+              <form onSubmit={handleChangePassword} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-300 mb-1">Current Password</label>
                   <input
-                    type="text"
-                    placeholder="Enter logo URL or leave blank for default..."
-                    value={settingsForm.logo_url || ''}
-                    onChange={e => setSettingsForm({ ...settingsForm, logo_url: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold"
+                    type="password"
+                    required
+                    placeholder="Enter current password..."
+                    value={passwordForm.currentPassword}
+                    onChange={e => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                    className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs font-semibold text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
                   />
-                  <label className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-xl cursor-pointer flex items-center gap-1.5 shrink-0 transition-colors">
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>Upload Logo</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={e => handleFileUpload(e, url => setSettingsForm(prev => ({ ...prev, logo_url: url })))}
-                    />
-                  </label>
                 </div>
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="block text-xs font-bold uppercase text-slate-700 mb-1">About Us Description</label>
-                <textarea
-                  rows={3}
-                  value={settingsForm.about_us || ''}
-                  onChange={e => setSettingsForm({ ...settingsForm, about_us: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold"
-                />
-              </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-300 mb-1">New Password</label>
+                  <input
+                    type="password"
+                    required
+                    placeholder="At least 6 characters..."
+                    value={passwordForm.newPassword}
+                    onChange={e => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                    className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs font-semibold text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-300 mb-1">Confirm New Password</label>
+                  <input
+                    type="password"
+                    required
+                    placeholder="Re-enter new password..."
+                    value={passwordForm.confirmPassword}
+                    onChange={e => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                    className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs font-semibold text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+                <div className="sm:col-span-3 flex justify-end">
+                  <button
+                    type="submit"
+                    disabled={passwordLoading}
+                    className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold px-6 py-2.5 rounded-xl shadow transition-all text-xs flex items-center gap-2 active:scale-95 disabled:opacity-50"
+                  >
+                    <Lock className="w-4 h-4" />
+                    <span>{passwordLoading ? 'Updating Password...' : 'Update Admin Password'}</span>
+                  </button>
+                </div>
+              </form>
             </div>
-
-            <div className="pt-4 border-t border-slate-100 flex justify-end">
-              <button
-                type="submit"
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-3 rounded-xl shadow transition-all text-xs sm:text-sm flex items-center gap-2"
-              >
-                <Save className="w-4 h-4" />
-                <span>Save All Settings</span>
-              </button>
-            </div>
-          </form>
+          </div>
         )}
 
       </div>
@@ -1090,11 +1182,19 @@ export default function AdminDashboardPage() {
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-bold uppercase mb-1">Product Image URL or Upload</label>
-                <div className="flex gap-2">
+              {/* Main Product Image Control */}
+              <div className="space-y-1.5 border-t pt-3">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold uppercase text-slate-800">Primary Product Image</label>
+                  <span className="text-[10px] text-slate-500 font-semibold">JPG, PNG, WEBP</span>
+                </div>
+                <div className="flex gap-2 items-center">
+                  {productForm.main_image && (
+                    <img src={productForm.main_image} alt="" className="w-10 h-10 object-cover rounded-lg border shrink-0 bg-slate-100" />
+                  )}
                   <input
                     type="text"
+                    placeholder="Paste image URL or upload from laptop..."
                     value={productForm.main_image}
                     onChange={e => setProductForm({ ...productForm, main_image: e.target.value })}
                     className="w-full p-2 bg-slate-50 border rounded-lg text-xs font-semibold"
@@ -1110,6 +1210,75 @@ export default function AdminDashboardPage() {
                     />
                   </label>
                 </div>
+              </div>
+
+              {/* Additional Product Images Gallery (Requirement 13) */}
+              <div className="space-y-2 border-t pt-3">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold uppercase text-slate-800">Additional Product Gallery Images</label>
+                  <label className="px-3 py-1 bg-brand-50 hover:bg-brand-100 text-brand-700 text-xs font-bold rounded-lg cursor-pointer flex items-center gap-1 border border-brand-200">
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add Gallery Image</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={e => handleFileUpload(e, url => {
+                        setProductForm(prev => ({
+                          ...prev,
+                          additional_images: [...prev.additional_images, url]
+                        }));
+                      })}
+                    />
+                  </label>
+                </div>
+
+                {productForm.additional_images.length > 0 ? (
+                  <div className="grid grid-cols-4 gap-2 pt-1">
+                    {productForm.additional_images.map((imgUrl, idx) => (
+                      <div key={idx} className="relative group aspect-square rounded-lg overflow-hidden border border-slate-200 bg-slate-100">
+                        <img src={imgUrl} alt="" className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1 transition-opacity">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const oldMain = productForm.main_image;
+                              setProductForm(prev => ({
+                                ...prev,
+                                main_image: imgUrl,
+                                additional_images: prev.additional_images.map((img, i) => i === idx ? oldMain : img).filter(Boolean)
+                              }));
+                              showNotify('Set as primary image!');
+                            }}
+                            className="p-1 bg-amber-500 text-white rounded text-[10px] font-bold"
+                            title="Set as Primary"
+                          >
+                            Main
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setProductForm(prev => ({
+                                ...prev,
+                                additional_images: prev.additional_images.filter((_, i) => i !== idx)
+                              }));
+                            }}
+                            className="p-1 bg-rose-600 text-white rounded"
+                            title="Remove Image"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-slate-400 italic">No additional gallery images added.</p>
+                )}
+
+                <p className="text-[10px] text-slate-400 font-medium pt-1">
+                  💡 Note: Please use images you own or have permission to use.
+                </p>
               </div>
 
               <div className="flex flex-wrap items-center gap-4 py-1">

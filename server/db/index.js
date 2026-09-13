@@ -25,9 +25,15 @@ if (process.env.DATABASE_URL) {
 function runQuery(sql, params = []) {
   return new Promise((resolve, reject) => {
     if (isPg) {
-      // Convert ? to $1, $2, etc for PostgreSQL if needed
+      let finalSql = sql;
+      const isInsert = /^\s*INSERT\s+INTO/i.test(sql);
+      const hasReturning = /RETURNING/i.test(sql);
+      if (isInsert && !hasReturning) {
+        finalSql += ' RETURNING id';
+      }
+
       let paramCount = 1;
-      const pgSql = sql.replace(/\?/g, () => `$${paramCount++}`);
+      const pgSql = finalSql.replace(/\?/g, () => `$${paramCount++}`);
       db.query(pgSql, params, (err, res) => {
         if (err) return reject(err);
         resolve({ lastID: res.rows[0]?.id || null, changes: res.rowCount });

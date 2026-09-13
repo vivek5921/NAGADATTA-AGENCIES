@@ -6,95 +6,142 @@ const fs = require('fs');
 const cloudinary = require('cloudinary').v2;
 const { authenticateAdmin } = require('../middleware/auth');
 
-// Configure Cloudinary if credentials provided
-const isCloudinaryConfigured = Boolean(
-  process.env.CLOUDINARY_CLOUD_NAME &&
-  process.env.CLOUDINARY_API_KEY &&
-  process.env.CLOUDINARY_API_SECRET
-);
-
-if (isCloudinaryConfigured) {
-  cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET
-  });
-}
-
-// Upload directory setup for local storage fallback
-const uploadDir = path.join(__dirname, '..', 'uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    const ext = path.extname(file.originalname);
-    cb(null, 'img-' + uniqueSuffix + ext);
+// Configure Cloudinary dynamically if credentials exist
+function configureCloudinary() {
+  if (
+    process.env.CLOUDINARY_CLOUD_NAME &&
+    process.env.CLOUDINARY_API_KEY &&
+    process.env.CLOUDINARY_API_SECRET
+  ) {
+    cloudinary.config({
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+      api_key: process.env.CLOUDINARY_API_KEY,
+      api_secret: process.env.CLOUDINARY_API_SECRET
+    });
+    return true;
   }
-});
+  return false;
+}
+
+// Memory storage for serverless compatibility (Vercel, AWS Lambda, Docker)
+const storage = multer.memoryStorage();
 
 const upload = multer({
   storage: storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
   fileFilter: function (req, file, cb) {
-    const filetypes = /jpeg|jpg|png|webp|gif|svg/;
+    const filetypes = /jpeg|jpg|png|webp/;
     const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
     const mimetype = filetypes.test(file.mimetype);
     if (mimetype && extname) {
       return cb(null, true);
     }
-    cb(new Error('Only image files (jpg, jpeg, png, webp, gif, svg) are allowed!'));
+    cb(new Error('Only image files (JPG, JPEG, PNG, WEBP) are supported!'));
   }
 });
+
+// Helper: Stream buffer to Cloudinary
+function uploadToCloudinary(buffer, options = {}) {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder: 'nagadatta_agencies',
+        format: 'webp',
+        quality: 'auto',
+        ...options
+      },
+      (error, result) => {
+        if (error) return reject(error);
+        resolve(result);
+      }
+    );
+    stream.end(buffer);
+  });
+}
 
 // POST /api/upload - Admin image upload
 router.post('/', authenticateAdmin, upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ success: false, message: 'No image file uploaded.' });
+      return res.status(400).json({ success: false, message: 'No image file provided.' });
     }
 
-    // If Cloudinary configured, upload to cloud storage
-    if (isCloudinaryConfigured) {
+    const hasCloudinary = configureCloudinary();
+
+    if (hasCloudinary) {
       try {
-        const cloudResult = await cloudinary.uploader.upload(req.file.path, {
-          folder: 'nagadatta_agencies',
-          format: 'webp',
-          quality: 'auto'
-        });
-
-        // Clean up temporary local file
-        try { fs.unlinkSync(req.file.path); } catch (e) {}
-
+        const cloudResult = await uploadToCloudinary(req.file.buffer);
         return res.json({
           success: true,
-          message: 'Image uploaded to cloud successfully.',
+          message: 'Image uploaded to Cloudinary successfully.',
           imageUrl: cloudResult.secure_url,
           publicId: cloudResult.public_id
         });
       } catch (cloudErr) {
-        console.warn('Cloudinary upload error, falling back to local file:', cloudErr.message);
+        console.error('Cloudinary upload error:', cloudErr);
+        return res.status(500).json({
+          success: false,
+          message: 'Cloudinary upload failed: ' + (cloudErr.message || 'Error processing image')
+        });
       }
     }
 
-    // Local file fallback
-    const host = req.get('host');
-    const protocol = req.protocol;
-    const imageUrl = `${protocol}://${host}/uploads/${req.file.filename}`;
+    // Fallback for local development when Cloudinary credentials are not set
+    const uploadDir = path.join(__dirname, '..', 'uploads');
+    if (!fs.existsSync(uploadDir)) {
+      try { fs.mkdirSync(uploadDir, { recursive: true }); } catch (e) {}
+    }
 
-    res.json({
-      success: true,
-      message: 'Image uploaded locally.',
-      imageUrl
-    });
+    const filename = `img-${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(req.file.originalname) || '.webp'}`;
+    const filePath = path.join(uploadDir, filename);
+
+    try {
+      fs.writeFileSync(filePath, req.file.buffer);
+      const host = req.get('host');
+      const protocol = req.protocol;
+      const imageUrl = `${protocol}://${host}/uploads/${filename}`;
+
+      return res.json({
+        success: true,
+        message: 'Image uploaded locally.',
+        imageUrl,
+        publicId: ''
+      });
+    } catch (writeErr) {
+      // In read-only serverless environment without Cloudinary, return Data URL
+      const base64 = req.file.buffer.toString('base64');
+      const dataUrl = `data:${req.file.mimetype};base64,${base64}`;
+      return res.json({
+        success: true,
+        message: 'Image uploaded as Data URL.',
+        imageUrl: dataUrl,
+        publicId: ''
+      });
+    }
   } catch (err) {
     console.error('Image upload error:', err);
-    res.status(500).json({ success: false, message: 'Failed to process image upload.' });
+    res.status(500).json({ success: false, message: err.message || 'Failed to process image upload.' });
+  }
+});
+
+// DELETE /api/upload - Remove Cloudinary asset
+router.delete('/', authenticateAdmin, async (req, res) => {
+  try {
+    const { publicId } = req.body;
+    if (!publicId) {
+      return res.status(400).json({ success: false, message: 'publicId is required.' });
+    }
+
+    const hasCloudinary = configureCloudinary();
+    if (hasCloudinary) {
+      await cloudinary.uploader.destroy(publicId);
+      return res.json({ success: true, message: 'Image deleted from Cloudinary.' });
+    }
+
+    res.json({ success: true, message: 'Image reference removed.' });
+  } catch (err) {
+    console.error('Cloudinary destroy error:', err);
+    res.status(500).json({ success: false, message: 'Failed to delete Cloudinary asset.' });
   }
 });
 

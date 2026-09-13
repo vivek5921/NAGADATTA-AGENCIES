@@ -148,28 +148,33 @@ async function seedDatabase() {
     console.log('[SEED] Admin user created (username: admin, password: admin123)');
   }
 
-  // 3. Shop Settings
-  const initialSettings = {
-    shop_name: "Nagadatta Agencies",
-    tagline: "Electrical & Home Appliances",
-    hero_title: "Nagadatta Agencies",
-    hero_subtitle: "Your Trusted Electrical & Home Appliance Store",
-    hero_description: "Karimnagar's trusted showroom providing premium air coolers, high-speed fans, water heaters, geysers, electric cookers, mixer grinders, gas stoves, genuine spare parts and electrical home appliances.",
-    phone_number: "+91 98490 12345",
-    whatsapp_number: "919849012345",
-    email: "contact@nagadattaagencies.com",
-    address: "H.No. 4-2-189, Near Tower Circle, Main Road, Karimnagar, Telangana - 505001, India",
-    google_maps_url: "https://maps.google.com/?q=Karimnagar+Telangana+505001",
-    instagram_url: "https://www.instagram.com/nagadatta_agencies",
-    opening_hours: "Monday - Saturday: 9:00 AM - 9:00 PM | Sunday: Closed",
-    about_us: "Nagadatta Agencies is a trusted showcase and distributor of high-performance electrical home appliances and genuine spare parts located in Karimnagar, Telangana. With an extensive range of top brands in coolers, ceiling & pedestal fans, geysers, mixer grinders, and kitchen appliances, we serve customers with trusted quality, authentic warranty, and reliable service.",
-    footer_text: "Nagadatta Agencies - Quality Electrical & Home Appliances in Karimnagar, Telangana.",
-    hero_image: "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=1200&q=80",
-    logo_url: ""
-  };
+  // 3. Shop Settings (Seed ONLY if empty; NEVER overwrite existing settings)
+  const existingSettings = await getAll(`SELECT key FROM shop_settings`);
+  if (existingSettings.length === 0) {
+    const initialSettings = {
+      shop_name: "Nagadatta Agencies",
+      tagline: "Electrical & Home Appliances",
+      hero_title: "Nagadatta Agencies",
+      hero_subtitle: "Your Trusted Electrical & Home Appliance Store",
+      hero_description: "Karimnagar's trusted showroom providing premium air coolers, high-speed fans, water heaters, geysers, electric cookers, mixer grinders, gas stoves, genuine spare parts and electrical home appliances.",
+      phone_number: "+91 98490 12345",
+      whatsapp_number: "919849012345",
+      email: "contact@nagadattaagencies.com",
+      address: "H.No. 4-2-189, Near Tower Circle, Main Road, Karimnagar, Telangana - 505001, India",
+      google_maps_url: "https://maps.google.com/?q=Karimnagar+Telangana+505001",
+      instagram_url: "https://www.instagram.com/nagadatta_agencies",
+      opening_hours: "Monday - Saturday: 9:00 AM - 9:00 PM | Sunday: Closed",
+      about_us: "Nagadatta Agencies is a trusted showcase and distributor of high-performance electrical home appliances and genuine spare parts located in Karimnagar, Telangana. With an extensive range of top brands in coolers, ceiling & pedestal fans, geysers, mixer grinders, and kitchen appliances, we serve customers with trusted quality, authentic warranty, and reliable service.",
+      footer_text: "Nagadatta Agencies - Quality Electrical & Home Appliances in Karimnagar, Telangana.",
+      hero_image: "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=1200&q=80",
+      logo_url: ""
+    };
 
-  for (const [key, value] of Object.entries(initialSettings)) {
-    await runQuery(`INSERT INTO shop_settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`, [key, value]);
+    const conflictClause = isPg ? `ON CONFLICT (key) DO NOTHING` : `ON CONFLICT (key) DO NOTHING`;
+    for (const [key, value] of Object.entries(initialSettings)) {
+      await runQuery(`INSERT INTO shop_settings (key, value) VALUES (?, ?) ${conflictClause}`, [key, value]);
+    }
+    console.log('[SEED] Initial shop settings created');
   }
 
   // 4. Initial Categories

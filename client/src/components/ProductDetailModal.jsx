@@ -110,6 +110,10 @@ export default function ProductDetailModal() {
                   src={activeImage || selectedProduct.main_image}
                   alt={selectedProduct.name}
                   className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=800&q=80';
+                  }}
                 />
               </div>
 
@@ -123,7 +127,15 @@ export default function ProductDetailModal() {
                         activeImage === img ? 'border-brand-600 ring-2 ring-brand-300' : 'border-slate-200 opacity-70 hover:opacity-100'
                       }`}
                     >
-                      <img src={img} alt="" className="w-full h-full object-cover" />
+                      <img
+                        src={img}
+                        alt=""
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=400&q=80';
+                        }}
+                      />
                     </button>
                   ))}
                 </div>

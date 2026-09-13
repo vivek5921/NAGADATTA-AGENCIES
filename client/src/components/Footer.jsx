@@ -88,12 +88,6 @@ export default function Footer() {
               <li>
                 <Link to="/contact" className="hover:text-brand-400 transition-colors">Contact</Link>
               </li>
-              <li className="pt-1">
-                <Link to="/admin/login" className="text-amber-400 hover:text-amber-300 transition-colors font-bold flex items-center gap-1.5">
-                  <Shield className="w-3.5 h-3.5" />
-                  <span>Admin / Owner Login</span>
-                </Link>
-              </li>
             </ul>
           </div>
 
@@ -157,17 +151,8 @@ export default function Footer() {
         {/* Footer Bottom */}
         <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-slate-500">
           <p>© {new Date().getFullYear()} {settings.shop_name || 'Nagadatta Agencies'}. All rights reserved.</p>
-          <div className="flex items-center gap-3">
+          <div>
             <span>Digital Product Showcase • Karimnagar, Telangana</span>
-            {/* Discreet admin link in footer */}
-            <Link
-              to="/admin/login"
-              className="text-slate-600 hover:text-slate-400 transition-colors p-1"
-              title="Portal"
-              aria-label="Portal Login"
-            >
-              <Lock className="w-3 h-3" />
-            </Link>
           </div>
         </div>
       </div>
