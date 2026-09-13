@@ -28,7 +28,8 @@ function runQuery(sql, params = []) {
       let finalSql = sql;
       const isInsert = /^\s*INSERT\s+INTO/i.test(sql);
       const hasReturning = /RETURNING/i.test(sql);
-      if (isInsert && !hasReturning) {
+      const isShopSettings = /INSERT\s+INTO\s+shop_settings/i.test(sql);
+      if (isInsert && !hasReturning && !isShopSettings) {
         finalSql += ' RETURNING id';
       }
 

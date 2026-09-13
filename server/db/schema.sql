@@ -72,3 +72,16 @@ CREATE TABLE IF NOT EXISTS shop_settings (
     key VARCHAR(100) PRIMARY KEY,
     value TEXT NOT NULL
 );
+
+-- Ensure all columns exist on pre-created PostgreSQL tables
+ALTER TABLE categories ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE categories ADD COLUMN IF NOT EXISTS image_url TEXT;
+ALTER TABLE categories ADD COLUMN IF NOT EXISTS cloudinary_public_id VARCHAR(255);
+ALTER TABLE categories ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
+ALTER TABLE categories ADD COLUMN IF NOT EXISTS display_order INT DEFAULT 0;
+
+ALTER TABLE products ADD COLUMN IF NOT EXISTS main_image_public_id VARCHAR(255);
+ALTER TABLE products ADD COLUMN IF NOT EXISTS additional_images TEXT;
+
+ALTER TABLE spare_parts ADD COLUMN IF NOT EXISTS cloudinary_public_id VARCHAR(255);
+
