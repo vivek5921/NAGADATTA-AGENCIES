@@ -7,7 +7,7 @@ import { Link } from 'react-router-dom';
 export default function MostSellingSection() {
   const { products, loading } = useShop();
 
-  const mostSellingProducts = products.filter(p => p.is_most_selling === 1);
+  const mostSellingProducts = products.filter(p => Boolean(p.is_most_selling));
 
   if (!loading && mostSellingProducts.length === 0) return null;
 

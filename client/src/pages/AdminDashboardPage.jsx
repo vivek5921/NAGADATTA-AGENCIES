@@ -8,6 +8,7 @@ import {
   MapPin, Instagram, RefreshCw, LayoutDashboard, Check, Image as ImageIcon,
   Lock
 } from 'lucide-react';
+import { compressImage } from '../utils/imageCompressor';
 
 export default function AdminDashboardPage() {
   const { adminUser, logoutAdmin, products, categories, spareParts, settings, refreshAllData } = useShop();
@@ -111,31 +112,36 @@ export default function AdminDashboardPage() {
     setTimeout(() => setNotification(null), 4000);
   };
 
-  // Image Upload Handler Helper
+  // Image Upload Handler Helper with In-Browser Compression
   const handleFileUpload = async (e, callback) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     // Always reset input value immediately so user can select the same file or another file again
     e.target.value = '';
     if (!file) return;
 
-    // Validate size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      showNotify('File size exceeds 5MB limit. Please select a smaller image.', 'error');
+    // Validate size (max 15MB for raw camera files)
+    if (file.size > 15 * 1024 * 1024) {
+      showNotify('File size exceeds 15MB limit. Please select a smaller image.', 'error');
       return;
     }
 
-    const formData = new FormData();
-    formData.append('image', file);
-
     try {
       setUploadingImage(true);
-      showNotify('Uploading image from device to cloud...', 'info');
+      showNotify('Optimizing image for fast upload...', 'info');
+
+      // Fast client-side compression reduces large device photos to ~150KB in milliseconds
+      const optimizedFile = await compressImage(file);
+
+      const formData = new FormData();
+      formData.append('image', optimizedFile);
+
+      showNotify('Uploading to cloud...', 'info');
       const res = await api.post('/upload', formData);
-      if (res.data.success) {
+      if (res.data?.success) {
         callback(res.data.imageUrl);
         showNotify('Image uploaded successfully!');
       } else {
-        showNotify(res.data.message || 'Failed to upload image.', 'error');
+        showNotify(res.data?.message || 'Failed to upload image.', 'error');
       }
     } catch (err) {
       console.error('Upload failed:', err);
@@ -225,7 +231,8 @@ export default function AdminDashboardPage() {
       setProductModalOpen(false);
       refreshAllData();
     } catch (err) {
-      showNotify('Failed to save product.', 'error');
+      const msg = err.response?.data?.message || 'Failed to save product.';
+      showNotify(msg, 'error');
     }
   };
 
@@ -269,7 +276,7 @@ export default function AdminDashboardPage() {
   // Quick Most Selling Control
   const handleToggleMostSelling = async (prod) => {
     try {
-      const newStatus = prod.is_most_selling === 1 ? false : true;
+      const newStatus = !Boolean(prod.is_most_selling);
       await api.put(`/products/${prod.id}`, { is_most_selling: newStatus });
       showNotify(`Most Selling ${newStatus ? 'Activated ⭐' : 'Deactivated'}`);
       refreshAllData();
@@ -281,9 +288,9 @@ export default function AdminDashboardPage() {
   // Quick Active/Inactive toggle
   const handleToggleActiveProduct = async (prod) => {
     try {
-      const newActive = prod.is_active === 1 ? 0 : 1;
+      const newActive = !Boolean(prod.is_active);
       await api.put(`/products/${prod.id}`, { is_active: newActive });
-      showNotify(`Product ${newActive === 1 ? 'Activated' : 'Deactivated'}`);
+      showNotify(`Product ${newActive ? 'Activated' : 'Deactivated'}`);
       refreshAllData();
     } catch (err) {
       showNotify('Failed to update active state.', 'error');
@@ -333,7 +340,8 @@ export default function AdminDashboardPage() {
       setSpareModalOpen(false);
       refreshAllData();
     } catch (err) {
-      showNotify('Failed to save spare part.', 'error');
+      const msg = err.response?.data?.message || 'Failed to save spare part.';
+      showNotify(msg, 'error');
     }
   };
 
@@ -345,7 +353,7 @@ export default function AdminDashboardPage() {
         name: cat.name,
         image_url: cat.image_url || '',
         display_order: cat.display_order || 0,
-        is_active: cat.is_active === 1
+        is_active: cat.is_active === 1 || cat.is_active === true
       });
     } else {
       setEditingCategory(null);
@@ -372,7 +380,8 @@ export default function AdminDashboardPage() {
       setCategoryModalOpen(false);
       refreshAllData();
     } catch (err) {
-      showNotify('Failed to save category.', 'error');
+      const msg = err.response?.data?.message || 'Failed to save category.';
+      showNotify(msg, 'error');
     }
   };
 
@@ -426,7 +435,7 @@ export default function AdminDashboardPage() {
   const availableCount = products.filter(p => p.availability === 'available').length;
   const limitedCount = products.filter(p => p.availability === 'limited').length;
   const outOfStockCount = products.filter(p => p.availability === 'out_of_stock').length;
-  const mostSellingCount = products.filter(p => p.is_most_selling === 1).length;
+  const mostSellingCount = products.filter(p => Boolean(p.is_most_selling)).length;
   const categoriesCount = categories.length;
   const sparePartsCount = spareParts.length;
 
@@ -622,13 +631,13 @@ export default function AdminDashboardPage() {
                           <button
                             onClick={() => handleToggleMostSelling(p)}
                             className={`px-2.5 py-1 rounded-lg text-[10px] font-extrabold flex items-center gap-1 transition-colors ${
-                              p.is_most_selling === 1
+                              Boolean(p.is_most_selling)
                                 ? 'bg-amber-500 text-white shadow-sm'
                                 : 'bg-slate-100 text-slate-500 hover:bg-amber-50'
                             }`}
                           >
                             <Flame className="w-3 h-3" />
-                            <span>{p.is_most_selling === 1 ? '⭐ ON' : 'OFF'}</span>
+                            <span>{Boolean(p.is_most_selling) ? '⭐ ON' : 'OFF'}</span>
                           </button>
                         </td>
                         <td className="p-3 text-right">
@@ -711,13 +720,13 @@ export default function AdminDashboardPage() {
                           <button
                             onClick={() => handleToggleMostSelling(p)}
                             className={`px-2.5 py-1 rounded-lg text-[10px] font-extrabold flex items-center gap-1 ${
-                              p.is_most_selling === 1
+                              Boolean(p.is_most_selling)
                                 ? 'bg-amber-500 text-white shadow-sm'
                                 : 'bg-slate-100 text-slate-500 hover:bg-amber-100'
                             }`}
                           >
                             <Flame className="w-3 h-3" />
-                            <span>{p.is_most_selling === 1 ? 'ON' : 'OFF'}</span>
+                            <span>{Boolean(p.is_most_selling) ? 'ON' : 'OFF'}</span>
                           </button>
                         </td>
                         <td className="p-3 text-right space-x-1.5">
@@ -771,7 +780,12 @@ export default function AdminDashboardPage() {
                     <div className="flex items-center gap-3 min-w-0">
                       <img src={cat.image_url} alt="" className="w-12 h-12 object-cover rounded-lg bg-slate-100 border shrink-0" />
                       <div className="min-w-0">
-                        <h4 className="font-bold text-slate-900 text-xs sm:text-sm truncate">{cat.name}</h4>
+                        <div className="flex items-center gap-1.5">
+                          <h4 className="font-bold text-slate-900 text-xs sm:text-sm truncate">{cat.name}</h4>
+                          {!Boolean(cat.is_active) && (
+                            <span className="px-1.5 py-0.2 text-[9px] font-bold bg-slate-200 text-slate-600 rounded">Inactive</span>
+                          )}
+                        </div>
                         <p className="text-[11px] text-slate-400">{count} Product{count !== 1 ? 's' : ''}</p>
                       </div>
                     </div>
@@ -1430,6 +1444,29 @@ export default function AdminDashboardPage() {
                       onChange={e => handleFileUpload(e, url => setCategoryForm(prev => ({ ...prev, image_url: url })))}
                     />
                   </label>
+                </div>
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label className="block text-xs font-bold uppercase mb-1">Display Priority</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={categoryForm.display_order}
+                      onChange={e => setCategoryForm({ ...categoryForm, display_order: parseInt(e.target.value, 10) || 0 })}
+                      className="w-full p-2 bg-slate-50 border rounded-lg text-xs font-semibold"
+                    />
+                  </div>
+                  <div className="flex items-center pt-5">
+                    <label className="flex items-center gap-2 text-xs font-bold text-slate-800 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={categoryForm.is_active}
+                        onChange={e => setCategoryForm({ ...categoryForm, is_active: e.target.checked })}
+                        className="w-4 h-4 text-brand-600 rounded"
+                      />
+                      <span>Active (Show in Store)</span>
+                    </label>
+                  </div>
                 </div>
               </div>
               <div className="pt-3 border-t flex justify-end gap-2">

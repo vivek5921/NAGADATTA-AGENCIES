@@ -26,7 +26,7 @@ export default function ProductsPage() {
   const filteredProducts = products.filter(p => {
     const matchCat = selectedCategory === 'all' || p.category_name === selectedCategory || String(p.category_id) === selectedCategory;
     const matchAvailability = availabilityFilter === 'all' || p.availability === availabilityFilter;
-    const matchMostSelling = !mostSellingOnly || p.is_most_selling === 1;
+    const matchMostSelling = !mostSellingOnly || Boolean(p.is_most_selling);
     const q = searchQuery.toLowerCase().trim();
     const matchSearch = !q || (
       p.name.toLowerCase().includes(q) ||

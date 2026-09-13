@@ -104,6 +104,27 @@ async function migrate() {
         value TEXT NOT NULL
       );
     `);
+
+    // Ensure all columns exist in SQLite tables if created with earlier schema
+    try {
+      const catCols = await getAll(`PRAGMA table_info(categories)`);
+      const catNames = catCols.map(c => c.name);
+      if (!catNames.includes('description')) await runQuery(`ALTER TABLE categories ADD COLUMN description TEXT`);
+      if (!catNames.includes('cloudinary_public_id')) await runQuery(`ALTER TABLE categories ADD COLUMN cloudinary_public_id TEXT`);
+      if (!catNames.includes('updated_at')) await runQuery(`ALTER TABLE categories ADD COLUMN updated_at DATETIME`);
+
+      const prodCols = await getAll(`PRAGMA table_info(products)`);
+      const prodNames = prodCols.map(c => c.name);
+      if (!prodNames.includes('main_image_public_id')) await runQuery(`ALTER TABLE products ADD COLUMN main_image_public_id TEXT`);
+      if (!prodNames.includes('updated_at')) await runQuery(`ALTER TABLE products ADD COLUMN updated_at DATETIME`);
+
+      const spareCols = await getAll(`PRAGMA table_info(spare_parts)`);
+      const spareNames = spareCols.map(c => c.name);
+      if (!spareNames.includes('cloudinary_public_id')) await runQuery(`ALTER TABLE spare_parts ADD COLUMN cloudinary_public_id TEXT`);
+      if (!spareNames.includes('updated_at')) await runQuery(`ALTER TABLE spare_parts ADD COLUMN updated_at DATETIME`);
+    } catch (e) {
+      console.log('[MIGRATION] SQLite column check notice:', e.message);
+    }
   }
 
   console.log('[MIGRATION] Tables verified.');

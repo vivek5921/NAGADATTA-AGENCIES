@@ -11,6 +11,8 @@ export default function CategoriesSection() {
     navigate(`/products?category=${encodeURIComponent(categoryName)}`);
   };
 
+  const activeCategories = categories.filter(cat => Boolean(cat.is_active));
+
   return (
     <section className="py-10 sm:py-14 bg-slate-50 border-b border-slate-200/60">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
@@ -40,7 +42,7 @@ export default function CategoriesSection() {
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-            {categories.map((cat) => (
+            {activeCategories.map((cat) => (
               <div
                 key={cat.id}
                 onClick={() => handleCategoryClick(cat.name)}

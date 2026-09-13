@@ -60,7 +60,7 @@ export const ShopProvider = ({ children }) => {
 
   const fetchCategories = async () => {
     try {
-      const res = await api.get('/categories?active_only=true');
+      const res = await api.get('/categories?active_only=false');
       if (res.data.success) {
         setCategories(res.data.categories);
       }

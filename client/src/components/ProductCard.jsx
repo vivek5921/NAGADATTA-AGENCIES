@@ -63,7 +63,7 @@ export default function ProductCard({ product }) {
 
         {/* Top Badges */}
         <div className="absolute top-2.5 left-2.5 flex flex-col gap-1 z-10">
-          {product.is_most_selling === 1 && (
+          {Boolean(product.is_most_selling) && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm">
               <Flame className="w-3 h-3 fill-white" />
               <span>Most Selling</span>
