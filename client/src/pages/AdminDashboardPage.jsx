@@ -15,6 +15,7 @@ export default function AdminDashboardPage() {
 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [notification, setNotification] = useState(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   // Modals & Form State
   const [productModalOpen, setProductModalOpen] = useState(false);
@@ -113,23 +114,34 @@ export default function AdminDashboardPage() {
   // Image Upload Handler Helper
   const handleFileUpload = async (e, callback) => {
     const file = e.target.files[0];
+    // Always reset input value immediately so user can select the same file or another file again
+    e.target.value = '';
     if (!file) return;
+
+    // Validate size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      showNotify('File size exceeds 5MB limit. Please select a smaller image.', 'error');
+      return;
+    }
 
     const formData = new FormData();
     formData.append('image', file);
 
     try {
-      showNotify('Uploading image...', 'info');
-      const res = await api.post('/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      setUploadingImage(true);
+      showNotify('Uploading image from device to cloud...', 'info');
+      const res = await api.post('/upload', formData);
       if (res.data.success) {
         callback(res.data.imageUrl);
         showNotify('Image uploaded successfully!');
+      } else {
+        showNotify(res.data.message || 'Failed to upload image.', 'error');
       }
     } catch (err) {
       console.error('Upload failed:', err);
-      showNotify(err.response?.data?.message || 'Failed to upload image.', 'error');
+      showNotify(err.response?.data?.message || 'Failed to upload image from device.', 'error');
+    } finally {
+      setUploadingImage(false);
     }
   };
 
@@ -456,13 +468,19 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* Notifications Toast */}
+        {/* Floating Notifications Toast (Always visible above modals) */}
         {notification && (
-          <div className={`p-3.5 mb-6 rounded-xl shadow-sm border text-xs sm:text-sm font-bold flex items-center justify-between animate-fadeIn ${
-            notification.type === 'error' ? 'bg-rose-50 border-rose-300 text-rose-800' : 'bg-emerald-50 border-emerald-300 text-emerald-800'
+          <div className={`fixed top-5 right-5 z-[99999] max-w-sm sm:max-w-md p-4 rounded-2xl shadow-2xl border text-xs sm:text-sm font-bold flex items-center justify-between gap-3 animate-fadeIn backdrop-blur-md ${
+            notification.type === 'error'
+              ? 'bg-rose-900/95 border-rose-500 text-white shadow-rose-950/40'
+              : notification.type === 'info'
+              ? 'bg-blue-900/95 border-blue-500 text-white shadow-blue-950/40'
+              : 'bg-emerald-900/95 border-emerald-500 text-white shadow-emerald-950/40'
           }`}>
             <span>{notification.msg}</span>
-            <button onClick={() => setNotification(null)}><X className="w-4 h-4" /></button>
+            <button onClick={() => setNotification(null)} className="p-1 hover:bg-white/20 rounded-lg">
+              <X className="w-4 h-4" />
+            </button>
           </div>
         )}
 
@@ -959,23 +977,34 @@ export default function AdminDashboardPage() {
                   <label className="block text-xs font-bold uppercase text-slate-700">Hero Section Showcase Image</label>
                   <div className="flex flex-col sm:flex-row gap-3 items-center">
                     {settingsForm.hero_image && (
-                      <img src={settingsForm.hero_image} alt="" className="w-24 h-16 object-cover rounded-lg border bg-slate-100 shrink-0" />
+                      <img src={settingsForm.hero_image} alt="" className="w-24 h-16 object-cover rounded-lg border bg-slate-100 shrink-0 shadow-sm" />
                     )}
                     <input
                       type="text"
                       placeholder="Enter image URL..."
                       value={settingsForm.hero_image || ''}
-                      onChange={e => setSettingsForm({ ...settingsForm, hero_image: e.target.value })}
+                      onChange={e => setSettingsForm({ ...settingsForm, hero_image: e.target.value, hero_image_url: e.target.value })}
                       className="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold"
                     />
-                    <label className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-xl cursor-pointer flex items-center gap-1.5 shrink-0 transition-colors">
+                    {settingsForm.hero_image && (
+                      <button
+                        type="button"
+                        onClick={() => setSettingsForm(prev => ({ ...prev, hero_image: '', hero_image_url: '' }))}
+                        className="px-3 py-2.5 bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 rounded-xl text-xs font-bold shrink-0 transition-colors border"
+                        title="Clear Hero Image"
+                      >
+                        Clear
+                      </button>
+                    )}
+                    <label className={`px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-xl cursor-pointer flex items-center gap-1.5 shrink-0 transition-colors ${uploadingImage ? 'opacity-60 pointer-events-none' : ''}`}>
                       <Upload className="w-3.5 h-3.5" />
-                      <span>Upload Image</span>
+                      <span>{uploadingImage ? 'Uploading...' : 'Upload Image'}</span>
                       <input
                         type="file"
                         accept="image/*"
                         className="hidden"
-                        onChange={e => handleFileUpload(e, url => setSettingsForm(prev => ({ ...prev, hero_image: url })))}
+                        disabled={uploadingImage}
+                        onChange={e => handleFileUpload(e, url => setSettingsForm(prev => ({ ...prev, hero_image: url, hero_image_url: url })))}
                       />
                     </label>
                   </div>
@@ -986,7 +1015,7 @@ export default function AdminDashboardPage() {
                   <label className="block text-xs font-bold uppercase text-slate-700">Logo Image URL</label>
                   <div className="flex flex-col sm:flex-row gap-3 items-center">
                     {settingsForm.logo_url && (
-                      <img src={settingsForm.logo_url} alt="" className="w-12 h-12 object-contain rounded-lg border bg-slate-100 shrink-0" />
+                      <img src={settingsForm.logo_url} alt="" className="w-12 h-12 object-contain rounded-lg border bg-slate-100 shrink-0 shadow-sm" />
                     )}
                     <input
                       type="text"
@@ -995,13 +1024,24 @@ export default function AdminDashboardPage() {
                       onChange={e => setSettingsForm({ ...settingsForm, logo_url: e.target.value })}
                       className="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold"
                     />
-                    <label className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-xl cursor-pointer flex items-center gap-1.5 shrink-0 transition-colors">
+                    {settingsForm.logo_url && (
+                      <button
+                        type="button"
+                        onClick={() => setSettingsForm(prev => ({ ...prev, logo_url: '' }))}
+                        className="px-3 py-2.5 bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 rounded-xl text-xs font-bold shrink-0 transition-colors border"
+                        title="Clear Logo Image"
+                      >
+                        Clear
+                      </button>
+                    )}
+                    <label className={`px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-xl cursor-pointer flex items-center gap-1.5 shrink-0 transition-colors ${uploadingImage ? 'opacity-60 pointer-events-none' : ''}`}>
                       <Upload className="w-3.5 h-3.5" />
-                      <span>Upload Logo</span>
+                      <span>{uploadingImage ? 'Uploading...' : 'Upload Logo'}</span>
                       <input
                         type="file"
                         accept="image/*"
                         className="hidden"
+                        disabled={uploadingImage}
                         onChange={e => handleFileUpload(e, url => setSettingsForm(prev => ({ ...prev, logo_url: url })))}
                       />
                     </label>
@@ -1191,22 +1231,33 @@ export default function AdminDashboardPage() {
                 </div>
                 <div className="flex gap-2 items-center">
                   {productForm.main_image && (
-                    <img src={productForm.main_image} alt="" className="w-10 h-10 object-cover rounded-lg border shrink-0 bg-slate-100" />
+                    <img src={productForm.main_image} alt="" className="w-10 h-10 object-cover rounded-lg border shrink-0 bg-slate-100 shadow-sm" />
                   )}
                   <input
                     type="text"
-                    placeholder="Paste image URL or upload from laptop..."
+                    placeholder="Paste image URL or upload from device..."
                     value={productForm.main_image}
                     onChange={e => setProductForm({ ...productForm, main_image: e.target.value })}
                     className="w-full p-2 bg-slate-50 border rounded-lg text-xs font-semibold"
                   />
-                  <label className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg cursor-pointer flex items-center gap-1 shrink-0">
+                  {productForm.main_image && (
+                    <button
+                      type="button"
+                      onClick={() => setProductForm(prev => ({ ...prev, main_image: '' }))}
+                      className="px-2.5 py-2 bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 rounded-lg text-xs font-bold shrink-0 transition-colors border"
+                      title="Clear Image"
+                    >
+                      Clear
+                    </button>
+                  )}
+                  <label className={`px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg cursor-pointer flex items-center gap-1 shrink-0 transition-colors ${uploadingImage ? 'opacity-60 pointer-events-none' : ''}`}>
                     <Upload className="w-3.5 h-3.5" />
-                    <span>Upload</span>
+                    <span>{uploadingImage ? 'Uploading...' : 'Upload'}</span>
                     <input
                       type="file"
                       accept="image/*"
                       className="hidden"
+                      disabled={uploadingImage}
                       onChange={e => handleFileUpload(e, url => setProductForm(prev => ({ ...prev, main_image: url })))}
                     />
                   </label>
@@ -1217,13 +1268,14 @@ export default function AdminDashboardPage() {
               <div className="space-y-2 border-t pt-3">
                 <div className="flex items-center justify-between">
                   <label className="block text-xs font-bold uppercase text-slate-800">Additional Product Gallery Images</label>
-                  <label className="px-3 py-1 bg-brand-50 hover:bg-brand-100 text-brand-700 text-xs font-bold rounded-lg cursor-pointer flex items-center gap-1 border border-brand-200">
+                  <label className={`px-3 py-1 bg-brand-50 hover:bg-brand-100 text-brand-700 text-xs font-bold rounded-lg cursor-pointer flex items-center gap-1 border border-brand-200 transition-colors ${uploadingImage ? 'opacity-60 pointer-events-none' : ''}`}>
                     <Plus className="w-3.5 h-3.5" />
-                    <span>Add Gallery Image</span>
+                    <span>{uploadingImage ? 'Uploading...' : 'Add Gallery Image'}</span>
                     <input
                       type="file"
                       accept="image/*"
                       className="hidden"
+                      disabled={uploadingImage}
                       onChange={e => handleFileUpload(e, url => {
                         setProductForm(prev => ({
                           ...prev,
@@ -1314,9 +1366,10 @@ export default function AdminDashboardPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-xl shadow"
+                  disabled={uploadingImage}
+                  className="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-xl shadow disabled:opacity-50"
                 >
-                  Save Product
+                  {uploadingImage ? 'Uploading Image...' : 'Save Product'}
                 </button>
               </div>
             </form>
@@ -1344,21 +1397,36 @@ export default function AdminDashboardPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold uppercase mb-1">Image URL or Upload</label>
-                <div className="flex gap-2">
+                <label className="block text-xs font-bold uppercase mb-1">Image URL or Upload from Device</label>
+                <div className="flex gap-2 items-center">
+                  {categoryForm.image_url && (
+                    <img src={categoryForm.image_url} alt="" className="w-10 h-10 object-cover rounded-lg border bg-slate-100 shrink-0 shadow-sm" />
+                  )}
                   <input
                     type="text"
+                    placeholder="Enter image URL or upload from device..."
                     value={categoryForm.image_url}
                     onChange={e => setCategoryForm({ ...categoryForm, image_url: e.target.value })}
                     className="w-full p-2 bg-slate-50 border rounded-lg text-xs font-semibold"
                   />
-                  <label className="px-3 py-2 bg-slate-800 text-white text-xs font-bold rounded-lg cursor-pointer flex items-center gap-1 shrink-0">
+                  {categoryForm.image_url && (
+                    <button
+                      type="button"
+                      onClick={() => setCategoryForm(prev => ({ ...prev, image_url: '' }))}
+                      className="px-2.5 py-2 bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 rounded-lg text-xs font-bold shrink-0 transition-colors border"
+                      title="Clear Image"
+                    >
+                      Clear
+                    </button>
+                  )}
+                  <label className={`px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg cursor-pointer flex items-center gap-1 shrink-0 transition-colors ${uploadingImage ? 'opacity-60 pointer-events-none' : ''}`}>
                     <Upload className="w-3.5 h-3.5" />
-                    <span>Upload</span>
+                    <span>{uploadingImage ? 'Uploading...' : 'Upload'}</span>
                     <input
                       type="file"
                       accept="image/*"
                       className="hidden"
+                      disabled={uploadingImage}
                       onChange={e => handleFileUpload(e, url => setCategoryForm(prev => ({ ...prev, image_url: url })))}
                     />
                   </label>
@@ -1366,7 +1434,9 @@ export default function AdminDashboardPage() {
               </div>
               <div className="pt-3 border-t flex justify-end gap-2">
                 <button type="button" onClick={() => setCategoryModalOpen(false)} className="px-3 py-1.5 bg-slate-100 text-xs font-bold rounded-lg">Cancel</button>
-                <button type="submit" className="px-4 py-1.5 bg-brand-600 text-white text-xs font-bold rounded-lg shadow">Save Category</button>
+                <button type="submit" disabled={uploadingImage} className="px-4 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-lg shadow disabled:opacity-50">
+                  {uploadingImage ? 'Uploading Image...' : 'Save Category'}
+                </button>
               </div>
             </form>
           </div>
@@ -1416,21 +1486,36 @@ export default function AdminDashboardPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold uppercase mb-1">Image URL or Upload</label>
-                <div className="flex gap-2">
+                <label className="block text-xs font-bold uppercase mb-1">Image URL or Upload from Device</label>
+                <div className="flex gap-2 items-center">
+                  {spareForm.image_url && (
+                    <img src={spareForm.image_url} alt="" className="w-10 h-10 object-cover rounded-lg border bg-slate-100 shrink-0 shadow-sm" />
+                  )}
                   <input
                     type="text"
+                    placeholder="Enter image URL or upload from device..."
                     value={spareForm.image_url}
                     onChange={e => setSpareForm({ ...spareForm, image_url: e.target.value })}
                     className="w-full p-2 bg-slate-50 border rounded-lg text-xs font-semibold"
                   />
-                  <label className="px-3 py-2 bg-slate-800 text-white text-xs font-bold rounded-lg cursor-pointer flex items-center gap-1 shrink-0">
+                  {spareForm.image_url && (
+                    <button
+                      type="button"
+                      onClick={() => setSpareForm(prev => ({ ...prev, image_url: '' }))}
+                      className="px-2.5 py-2 bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 rounded-lg text-xs font-bold shrink-0 transition-colors border"
+                      title="Clear Image"
+                    >
+                      Clear
+                    </button>
+                  )}
+                  <label className={`px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg cursor-pointer flex items-center gap-1 shrink-0 transition-colors ${uploadingImage ? 'opacity-60 pointer-events-none' : ''}`}>
                     <Upload className="w-3.5 h-3.5" />
-                    <span>Upload</span>
+                    <span>{uploadingImage ? 'Uploading...' : 'Upload'}</span>
                     <input
                       type="file"
                       accept="image/*"
                       className="hidden"
+                      disabled={uploadingImage}
                       onChange={e => handleFileUpload(e, url => setSpareForm(prev => ({ ...prev, image_url: url })))}
                     />
                   </label>
@@ -1449,7 +1534,9 @@ export default function AdminDashboardPage() {
               </div>
               <div className="pt-3 border-t flex justify-end gap-2">
                 <button type="button" onClick={() => setSpareModalOpen(false)} className="px-3 py-1.5 bg-slate-100 text-xs font-bold rounded-lg">Cancel</button>
-                <button type="submit" className="px-4 py-1.5 bg-amber-600 text-white text-xs font-bold rounded-lg shadow">Save Spare Part</button>
+                <button type="submit" disabled={uploadingImage} className="px-4 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-lg shadow disabled:opacity-50">
+                  {uploadingImage ? 'Uploading Image...' : 'Save Spare Part'}
+                </button>
               </div>
             </form>
           </div>

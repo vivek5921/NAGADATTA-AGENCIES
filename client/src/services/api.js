@@ -15,11 +15,15 @@ const api = axios.create({
   },
 });
 
-// Interceptor to attach JWT token for admin routes
+// Interceptor to attach JWT token and handle multipart FormData
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('nagadatta_admin_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+  // When sending FormData, delete Content-Type so browser sets boundary automatically
+  if (config.data instanceof FormData) {
+    delete config.headers['Content-Type'];
   }
   return config;
 }, (error) => {

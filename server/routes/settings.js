@@ -40,18 +40,18 @@ router.put('/', authenticateAdmin, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Settings object is required.' });
     }
 
-    // Populate aliases automatically
-    if (updates.phone && !updates.phone_number) updates.phone_number = updates.phone;
-    if (updates.phone_number && !updates.phone) updates.phone = updates.phone_number;
+    // Populate and sync aliases automatically
+    if (updates.phone_number !== undefined) updates.phone = updates.phone_number;
+    else if (updates.phone !== undefined) updates.phone_number = updates.phone;
 
-    if (updates.whatsapp && !updates.whatsapp_number) updates.whatsapp_number = updates.whatsapp;
-    if (updates.whatsapp_number && !updates.whatsapp) updates.whatsapp = updates.whatsapp_number;
+    if (updates.whatsapp_number !== undefined) updates.whatsapp = updates.whatsapp_number;
+    else if (updates.whatsapp !== undefined) updates.whatsapp_number = updates.whatsapp;
 
-    if (updates.about_text && !updates.about_us) updates.about_us = updates.about_text;
-    if (updates.about_us && !updates.about_text) updates.about_text = updates.about_us;
+    if (updates.about_us !== undefined) updates.about_text = updates.about_us;
+    else if (updates.about_text !== undefined) updates.about_us = updates.about_text;
 
-    if (updates.hero_image_url && !updates.hero_image) updates.hero_image = updates.hero_image_url;
-    if (updates.hero_image && !updates.hero_image_url) updates.hero_image_url = updates.hero_image;
+    if (updates.hero_image !== undefined) updates.hero_image_url = updates.hero_image;
+    else if (updates.hero_image_url !== undefined) updates.hero_image = updates.hero_image_url;
 
     const upsertSql = `INSERT INTO shop_settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`;
 
